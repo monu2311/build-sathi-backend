@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  BUYER
+  SELLER
+  CONTRACTOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum RequirementStatus {
+  OPEN
+  QUOTED
+  ACCEPTED
+  ORDERED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id           String     @id @default(uuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  phone        String?
+  role         UserRole   @default(BUYER)
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  buyerProfile      BuyerProfile?
+  deliveryAddresses DeliveryAddress[]
+  requirements      Requirement[]
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+}
+
+model RegistrationOtp {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  otpHash      String
+  expiresAt    DateTime
+  verified     Boolean  @default(false)
+  attempts     Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
+model BuyerProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  phoneNumber     String?
+  companyName     String?
+  state           String
+  city            String
+  pincode         String
+  completeAddress String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([state])
+  @@index([city])
+  @@index([pincode])
+}
+
+model DeliveryAddress {
+  id     String @id @default(uuid())
+  userId String
+
+  label        String  @default("Construction Site")
+  name         String
+  phone        String
+  addressLine1 String
+  addressLine2 String?
+  landmark     String?
+  city         String
+  state        String
+  pincode      String
+  isDefault    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requirements Requirement[]
+
+  @@index([userId])
+}
+
+model PasswordResetOtp {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  otpHash   String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
+model MaterialCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  materials Material[]
+}
+
+model Material {
+  id          String   @id @default(uuid())
+  categoryId  String
+  name        String
+  description String?
+  unit        String
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category     MaterialCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  requirements Requirement[]
+
+  @@index([categoryId])
+  @@index([isActive])
+  @@index([name])
+}
+
+model Requirement {
+  id                String @id @default(uuid())
+  buyerId           String
+  materialId        String
+  deliveryAddressId String
+
+  quantity Decimal @db.Decimal(12, 2)
+  unit     String
+
+  deliveryPreference String
+  notes              String?
+
+  status RequirementStatus @default(OPEN)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  buyer           User            @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  material        Material        @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  deliveryAddress DeliveryAddress @relation(fields: [deliveryAddressId], references: [id], onDelete: Restrict)
+
+  @@index([buyerId])
+  @@index([materialId])
+  @@index([deliveryAddressId])
+  @@index([status])
+  @@index([createdAt])
+}
