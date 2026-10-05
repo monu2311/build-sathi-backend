@@ -52,6 +52,9 @@ model User {
   subscriptions     SellerSubscription[]
   subscriptionOrders SubscriptionOrder[]
 
+  feedbackGiven      Feedback[] @relation("FeedbackGiven")
+  feedbackReceived   Feedback[] @relation("FeedbackReceived")
+
   @@index([email])
   @@index([role])
   @@index([status])
@@ -370,4 +373,26 @@ model SubscriptionOrder {
 
   @@index([sellerId])
   @@index([status])
+}
+
+
+model Feedback {
+  id         String @id @default(uuid())
+  orderId    String
+  reviewerId String
+  revieweeId String
+
+  rating  Int // 1 to 5
+  comment String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // order    Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  reviewer User  @relation("FeedbackGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewee User  @relation("FeedbackReceived", fields: [revieweeId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, reviewerId])
+  @@index([revieweeId, createdAt])
+  @@index([reviewerId])
 }
